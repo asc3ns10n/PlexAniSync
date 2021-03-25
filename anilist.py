@@ -770,6 +770,7 @@ def update_entry(
         elif (
             watched_episode_count > anilist_episodes_watched
             and anilist_total_episodes > 0
+            and status != "REPEATING"
         ):
             # episode watch count higher than plex
             logger.warning(
@@ -788,7 +789,27 @@ def update_entry(
                 for current_episodes_watched in range(anilist_episodes_watched + 1, watched_episode_count + 1):
                     update_series(series.anilist_id, current_episodes_watched, "CURRENT")
             return
+        elif (
+            watched_episode_count > anilist_episodes_watched
+            and anilist_total_episodes > 0
+            and status == "REPEATING"
+        ):
+            # episode watch count higher than plex
+            logger.warning(
+                f"[ANILIST] Plex episode watch count [{watched_episode_count}] was higher than the one"
+                f" on AniList [{anilist_episodes_watched}] which has total of {anilist_total_episodes} "
+                "episodes | updating AniList entry to rewatching"
+            )
 
+            # calculate episode difference and iterate up so activity stream lists
+            # episodes watched if episode difference exceeds 32 only update most
+            # recent as otherwise will flood the notification feed
+            episode_difference = watched_episode_count - anilist_episodes_watched
+            if episode_difference == 1 or episode_difference > 32:
+                update_series(series.anilist_id, watched_episode_count, "REPEATING")
+            else:
+                for current_episodes_watched in range(anilist_episodes_watched + 1, watched_episode_count + 1):
+                    update_series(series.anilist_id, current_episodes_watched, "REPEATING")
         elif watched_episode_count == anilist_episodes_watched:
             logger.info(
                 "[ANILIST] Episodes watched was the same on AniList and Plex so skipping update"
